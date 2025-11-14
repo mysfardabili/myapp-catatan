@@ -2,16 +2,13 @@ import { api, APIError } from "encore.dev/api";
 import db from "../db";
 import type { Note } from "./create";
 
-export interface UpdateNoteRequest {
+export interface PinNoteRequest {
   id: number;
-  title: string;
-  content: string;
-  tags?: string[];
+  pinned: boolean;
 }
 
-// Updates an existing note.
-export const update = api<UpdateNoteRequest, Note>(
-  { expose: true, method: "PUT", path: "/notes/:id" },
+export const pin = api<PinNoteRequest, Note>(
+  { expose: true, method: "PUT", path: "/notes/:id/pin" },
   async (req) => {
     const row = await db.queryRow<{
       id: number;
@@ -24,9 +21,7 @@ export const update = api<UpdateNoteRequest, Note>(
       updated_at: Date;
     }>`
       UPDATE notes
-      SET title = ${req.title},
-          content = ${req.content},
-          tags = COALESCE(${req.tags}, tags),
+      SET is_pinned = ${req.pinned},
           updated_at = NOW()
       WHERE id = ${req.id}
       RETURNING id, title, content, tags, is_pinned, is_archived, created_at, updated_at

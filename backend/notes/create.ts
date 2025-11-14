@@ -4,12 +4,16 @@ import db from "../db";
 export interface CreateNoteRequest {
   title: string;
   content: string;
+  tags?: string[];
 }
 
 export interface Note {
   id: number;
   title: string;
   content: string;
+  tags: string[];
+  isPinned: boolean;
+  isArchived: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -22,12 +26,15 @@ export const create = api<CreateNoteRequest, Note>(
       id: number;
       title: string;
       content: string;
+      tags: string[];
+      is_pinned: boolean;
+      is_archived: boolean;
       created_at: Date;
       updated_at: Date;
     }>`
-      INSERT INTO notes (title, content)
-      VALUES (${req.title}, ${req.content})
-      RETURNING id, title, content, created_at, updated_at
+      INSERT INTO notes (title, content, tags)
+      VALUES (${req.title}, ${req.content}, ${req.tags || []})
+      RETURNING id, title, content, tags, is_pinned, is_archived, created_at, updated_at
     `;
 
     if (!row) {
@@ -38,6 +45,9 @@ export const create = api<CreateNoteRequest, Note>(
       id: row.id,
       title: row.title,
       content: row.content,
+      tags: row.tags,
+      isPinned: row.is_pinned,
+      isArchived: row.is_archived,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };

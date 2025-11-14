@@ -7,6 +7,8 @@ interface NoteListProps {
   selectedNoteId?: number;
   onNoteSelect: (note: Note) => void;
   onNoteDelete: (id: number) => void;
+  onNotePin: (id: number, pinned: boolean) => void;
+  onNoteArchive: (id: number, archived: boolean) => void;
 }
 
 export function NoteList({
@@ -15,6 +17,8 @@ export function NoteList({
   selectedNoteId,
   onNoteSelect,
   onNoteDelete,
+  onNotePin,
+  onNoteArchive,
 }: NoteListProps) {
   if (isLoading) {
     return (
@@ -49,6 +53,8 @@ export function NoteList({
           isSelected={note.id === selectedNoteId}
           onSelect={() => onNoteSelect(note)}
           onDelete={() => onNoteDelete(note.id)}
+          onPin={() => onNotePin(note.id, !note.isPinned)}
+          onArchive={() => onNoteArchive(note.id, !note.isArchived)}
         />
       ))}
     </div>

@@ -4,9 +4,10 @@ import backend from "~backend/client";
 import type { Note } from "~backend/notes/create";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
+import { TagInput } from "./TagInput";
+import { MarkdownEditor } from "./MarkdownEditor";
 import { Save, X } from "lucide-react";
 
 interface NoteEditorProps {
@@ -18,21 +19,24 @@ interface NoteEditorProps {
 export function NoteEditor({ note, onSave, onCancel }: NoteEditorProps) {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
     if (note) {
       setTitle(note.title);
       setContent(note.content);
+      setTags(note.tags || []);
     } else {
       setTitle("");
       setContent("");
+      setTags([]);
     }
   }, [note]);
 
   const createMutation = useMutation({
     mutationFn: async () => {
-      await backend.notes.create({ title, content });
+      await backend.notes.create({ title, content, tags });
     },
     onSuccess: () => {
       toast({
@@ -54,7 +58,7 @@ export function NoteEditor({ note, onSave, onCancel }: NoteEditorProps) {
   const updateMutation = useMutation({
     mutationFn: async () => {
       if (!note) return;
-      await backend.notes.update({ id: note.id, title, content });
+      await backend.notes.update({ id: note.id, title, content, tags });
     },
     onSuccess: () => {
       toast({
@@ -107,12 +111,11 @@ export function NoteEditor({ note, onSave, onCancel }: NoteEditorProps) {
           />
         </div>
         <div className="space-y-2">
-          <Textarea
-            placeholder="Start writing your note..."
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            className="min-h-[400px] resize-none"
-          />
+          <MarkdownEditor value={content} onChange={setContent} />
+        </div>
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Tags</label>
+          <TagInput tags={tags} onChange={setTags} />
         </div>
         <div className="flex gap-2">
           <Button onClick={handleSave} disabled={isSaving} className="flex-1">

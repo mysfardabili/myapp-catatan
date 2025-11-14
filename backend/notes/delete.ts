@@ -5,18 +5,17 @@ export interface DeleteNoteRequest {
   id: number;
 }
 
-// Deletes a note.
 export const remove = api<DeleteNoteRequest, void>(
   { expose: true, method: "DELETE", path: "/notes/:id" },
   async (req) => {
     const row = await db.queryRow<{ id: number }>`
       DELETE FROM notes
-      WHERE id = ${req.id}
+      WHERE id = ${req.id} AND is_archived = true
       RETURNING id
     `;
 
     if (!row) {
-      throw APIError.notFound("note not found");
+      throw APIError.notFound("note not found or not archived");
     }
   }
 );

@@ -14,10 +14,13 @@ export const get = api<GetNoteRequest, Note>(
       id: number;
       title: string;
       content: string;
+      tags: string[];
+      is_pinned: boolean;
+      is_archived: boolean;
       created_at: Date;
       updated_at: Date;
     }>`
-      SELECT id, title, content, created_at, updated_at
+      SELECT id, title, content, tags, is_pinned, is_archived, created_at, updated_at
       FROM notes
       WHERE id = ${req.id}
     `;
@@ -30,6 +33,9 @@ export const get = api<GetNoteRequest, Note>(
       id: row.id,
       title: row.title,
       content: row.content,
+      tags: row.tags,
+      isPinned: row.is_pinned,
+      isArchived: row.is_archived,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };

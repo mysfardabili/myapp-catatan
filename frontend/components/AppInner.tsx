@@ -4,20 +4,26 @@ import backend from "~backend/client";
 import type { Note } from "~backend/notes/create";
 import { NoteList } from "./NoteList";
 import { NoteEditor } from "./NoteEditor";
+import { SearchBar } from "./SearchBar";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
-import { Plus } from "lucide-react";
+import { Plus, Archive } from "lucide-react";
 
 export function AppInner() {
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
-    queryKey: ["notes"],
+    queryKey: ["notes", searchQuery, showArchived],
     queryFn: async () => {
-      const response = await backend.notes.list();
+      const response = await backend.notes.list({ 
+        search: searchQuery || undefined,
+        archived: showArchived 
+      });
       return response.notes;
     },
   });
@@ -33,7 +39,7 @@ export function AppInner() {
       }
       toast({
         title: "Note deleted",
-        description: "Your note has been deleted successfully.",
+        description: "Your note has been deleted permanently.",
       });
     },
     onError: (error) => {
@@ -41,6 +47,53 @@ export function AppInner() {
       toast({
         title: "Error",
         description: "Failed to delete note. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const pinMutation = useMutation({
+    mutationFn: async ({ id, pinned }: { id: number; pinned: boolean }) => {
+      await backend.notes.pin({ id, pinned });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notes"] });
+      toast({
+        title: "Note updated",
+        description: "Note pin status updated.",
+      });
+    },
+    onError: (error) => {
+      console.error("Failed to pin note:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update note. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const archiveMutation = useMutation({
+    mutationFn: async ({ id, archived }: { id: number; archived: boolean }) => {
+      await backend.notes.archive({ id, archived });
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["notes"] });
+      if (selectedNote) {
+        setSelectedNote(null);
+      }
+      toast({
+        title: variables.archived ? "Note archived" : "Note unarchived",
+        description: variables.archived 
+          ? "Your note has been moved to archive."
+          : "Your note has been restored.",
+      });
+    },
+    onError: (error) => {
+      console.error("Failed to archive note:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update note. Please try again.",
         variant: "destructive",
       });
     },
@@ -66,23 +119,47 @@ export function AppInner() {
     deleteMutation.mutate(id);
   };
 
+  const handlePin = (id: number, pinned: boolean) => {
+    pinMutation.mutate({ id, pinned });
+  };
+
+  const handleArchive = (id: number, archived: boolean) => {
+    archiveMutation.mutate({ id, archived });
+  };
+
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+  };
+
   const notes = data || [];
 
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
-        <div className="mb-8 flex items-center justify-between">
-          <h1 className="text-4xl font-bold text-foreground">My Notes</h1>
-          <Button onClick={handleNewNote} size="lg">
-            <Plus className="mr-2 h-5 w-5" />
-            New Note
-          </Button>
+        <div className="mb-8 space-y-4">
+          <div className="flex items-center justify-between">
+            <h1 className="text-4xl font-bold text-foreground">My Notes</h1>
+            <div className="flex gap-2">
+              <Button 
+                variant={showArchived ? "default" : "outline"}
+                onClick={() => setShowArchived(!showArchived)}
+              >
+                <Archive className="mr-2 h-4 w-4" />
+                {showArchived ? "Show Active" : "Show Archived"}
+              </Button>
+              <Button onClick={handleNewNote} size="lg">
+                <Plus className="mr-2 h-5 w-5" />
+                New Note
+              </Button>
+            </div>
+          </div>
+          <SearchBar onSearch={handleSearch} value={searchQuery} />
         </div>
 
         <div className="grid gap-6 lg:grid-cols-[400px_1fr]">
           <div className="space-y-4">
             <h2 className="text-lg font-semibold text-foreground">
-              All Notes ({notes.length})
+              {showArchived ? "Archived Notes" : "Active Notes"} ({notes.length})
             </h2>
             <NoteList
               notes={notes}
@@ -90,6 +167,8 @@ export function AppInner() {
               selectedNoteId={selectedNote?.id}
               onNoteSelect={handleNoteSelect}
               onNoteDelete={handleDelete}
+              onNotePin={handlePin}
+              onNoteArchive={handleArchive}
             />
           </div>
 
