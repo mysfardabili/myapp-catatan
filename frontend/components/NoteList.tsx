@@ -9,6 +9,7 @@ interface NoteListProps {
   onNoteDelete: (id: number) => void;
   onNotePin: (id: number, pinned: boolean) => void;
   onNoteArchive: (id: number, archived: boolean) => void;
+  onTagClick?: (tag: string) => void;
 }
 
 export function NoteList({
@@ -19,6 +20,7 @@ export function NoteList({
   onNoteDelete,
   onNotePin,
   onNoteArchive,
+  onTagClick,
 }: NoteListProps) {
   if (isLoading) {
     return (
@@ -55,6 +57,7 @@ export function NoteList({
           onDelete={() => onNoteDelete(note.id)}
           onPin={() => onNotePin(note.id, !note.isPinned)}
           onArchive={() => onNoteArchive(note.id, !note.isArchived)}
+          onTagClick={onTagClick}
         />
       ))}
     </div>

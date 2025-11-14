@@ -21,9 +21,10 @@ interface NoteCardProps {
   onDelete: () => void;
   onPin: () => void;
   onArchive: () => void;
+  onTagClick?: (tag: string) => void;
 }
 
-export function NoteCard({ note, isSelected, onSelect, onDelete, onPin, onArchive }: NoteCardProps) {
+export function NoteCard({ note, isSelected, onSelect, onDelete, onPin, onArchive, onTagClick }: NoteCardProps) {
   const formatDate = (date: Date) => {
     return new Date(date).toLocaleDateString("en-US", {
       month: "short",
@@ -59,7 +60,14 @@ export function NoteCard({ note, isSelected, onSelect, onDelete, onPin, onArchiv
             {note.tags && note.tags.length > 0 && (
               <div className="flex flex-wrap gap-1">
                 {note.tags.map((tag) => (
-                  <span key={tag} className="rounded-sm bg-primary/10 px-1.5 py-0.5 text-xs">
+                  <span 
+                    key={tag} 
+                    className="rounded-sm bg-primary/10 px-1.5 py-0.5 text-xs cursor-pointer hover:bg-primary/20 transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onTagClick?.(tag);
+                    }}
+                  >
                     {tag}
                   </span>
                 ))}

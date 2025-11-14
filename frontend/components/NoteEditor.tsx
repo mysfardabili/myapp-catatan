@@ -8,15 +8,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import { TagInput } from "./TagInput";
 import { MarkdownEditor } from "./MarkdownEditor";
-import { Save, X } from "lucide-react";
+import { exportNoteToMarkdown } from "../utils/exportNotes";
+import { Save, X, Download } from "lucide-react";
 
 interface NoteEditorProps {
   note: Note | null;
   onSave: () => void;
   onCancel: () => void;
+  setSaveCallback?: (callback: () => void) => void;
 }
 
-export function NoteEditor({ note, onSave, onCancel }: NoteEditorProps) {
+export function NoteEditor({ note, onSave, onCancel, setSaveCallback }: NoteEditorProps) {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [tags, setTags] = useState<string[]>([]);
@@ -33,6 +35,12 @@ export function NoteEditor({ note, onSave, onCancel }: NoteEditorProps) {
       setTags([]);
     }
   }, [note]);
+
+  useEffect(() => {
+    if (setSaveCallback) {
+      setSaveCallback(() => handleSave);
+    }
+  }, [setSaveCallback, title, content, tags, note]);
 
   const createMutation = useMutation({
     mutationFn: async () => {
@@ -96,10 +104,28 @@ export function NoteEditor({ note, onSave, onCancel }: NoteEditorProps) {
 
   const isSaving = createMutation.isPending || updateMutation.isPending;
 
+  const handleExport = () => {
+    if (note) {
+      exportNoteToMarkdown(note);
+      toast({
+        title: "Note exported",
+        description: "Your note has been downloaded as a markdown file.",
+      });
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{note ? "Edit Note" : "New Note"}</CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle>{note ? "Edit Note" : "New Note"}</CardTitle>
+          {note && (
+            <Button variant="outline" size="sm" onClick={handleExport}>
+              <Download className="mr-2 h-4 w-4" />
+              Export
+            </Button>
+          )}
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
@@ -121,6 +147,7 @@ export function NoteEditor({ note, onSave, onCancel }: NoteEditorProps) {
           <Button onClick={handleSave} disabled={isSaving} className="flex-1">
             <Save className="mr-2 h-4 w-4" />
             {isSaving ? "Saving..." : "Save Note"}
+            <span className="ml-2 text-xs opacity-70">(Ctrl+S)</span>
           </Button>
           <Button variant="outline" onClick={onCancel} disabled={isSaving}>
             <X className="mr-2 h-4 w-4" />

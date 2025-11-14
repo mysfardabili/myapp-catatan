@@ -1,27 +1,34 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import backend from "~backend/client";
 import type { Note } from "~backend/notes/create";
 import { NoteList } from "./NoteList";
 import { NoteEditor } from "./NoteEditor";
 import { SearchBar } from "./SearchBar";
+import { ThemeToggle } from "./ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
-import { Plus, Archive } from "lucide-react";
+import { exportAllNotesToMarkdown } from "../utils/exportNotes";
+import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
+import { Plus, Archive, Download } from "lucide-react";
 
 export function AppInner() {
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [showArchived, setShowArchived] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const saveCallbackRef = useRef<(() => void) | null>(null);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["notes", searchQuery, showArchived],
+    queryKey: ["notes", searchQuery, selectedTags, showArchived],
     queryFn: async () => {
       const response = await backend.notes.list({ 
         search: searchQuery || undefined,
+        tags: selectedTags.length > 0 ? selectedTags : undefined,
         archived: showArchived 
       });
       return response.notes;
@@ -131,6 +138,44 @@ export function AppInner() {
     setSearchQuery(query);
   };
 
+  const handleTagClick = (tag: string) => {
+    if (!selectedTags.includes(tag)) {
+      setSelectedTags([...selectedTags, tag]);
+    }
+  };
+
+  const handleTagsChange = (tags: string[]) => {
+    setSelectedTags(tags);
+  };
+
+  const handleExportAll = () => {
+    if (notes.length === 0) {
+      toast({
+        title: "No notes to export",
+        description: "Create some notes first.",
+        variant: "destructive",
+      });
+      return;
+    }
+    exportAllNotesToMarkdown(notes);
+    toast({
+      title: "Notes exported",
+      description: `${notes.length} notes have been downloaded as a markdown file.`,
+    });
+  };
+
+  useKeyboardShortcuts({
+    onNew: handleNewNote,
+    onSave: () => {
+      if (saveCallbackRef.current) {
+        saveCallbackRef.current();
+      }
+    },
+    onSearch: () => {
+      searchInputRef.current?.focus();
+    },
+  });
+
   const notes = data || [];
 
   return (
@@ -140,6 +185,15 @@ export function AppInner() {
           <div className="flex items-center justify-between">
             <h1 className="text-4xl font-bold text-foreground">My Notes</h1>
             <div className="flex gap-2">
+              <ThemeToggle />
+              <Button 
+                variant="outline"
+                onClick={handleExportAll}
+                disabled={notes.length === 0}
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Export All
+              </Button>
               <Button 
                 variant={showArchived ? "default" : "outline"}
                 onClick={() => setShowArchived(!showArchived)}
@@ -150,10 +204,17 @@ export function AppInner() {
               <Button onClick={handleNewNote} size="lg">
                 <Plus className="mr-2 h-5 w-5" />
                 New Note
+                <span className="ml-2 text-xs opacity-70">(Ctrl+N)</span>
               </Button>
             </div>
           </div>
-          <SearchBar onSearch={handleSearch} value={searchQuery} />
+          <SearchBar 
+            onSearch={handleSearch} 
+            value={searchQuery} 
+            selectedTags={selectedTags}
+            onTagsChange={handleTagsChange}
+            inputRef={searchInputRef}
+          />
         </div>
 
         <div className="grid gap-6 lg:grid-cols-[400px_1fr]">
@@ -169,6 +230,7 @@ export function AppInner() {
               onNoteDelete={handleDelete}
               onNotePin={handlePin}
               onNoteArchive={handleArchive}
+              onTagClick={handleTagClick}
             />
           </div>
 
@@ -180,6 +242,9 @@ export function AppInner() {
                 onCancel={() => {
                   setIsCreating(false);
                   setSelectedNote(null);
+                }}
+                setSaveCallback={(callback) => {
+                  saveCallbackRef.current = callback;
                 }}
               />
             )}
